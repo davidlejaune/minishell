@@ -1,33 +1,26 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strlen.c                                        :+:      :+:    :+:   */
+/*   ft_strsfree.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/11/09 23:13:50 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/07 22:37:55 by mirsella         ###   ########.fr       */
+/*   Created: 2023/02/06 13:39:19 by mirsella          #+#    #+#             */
+/*   Updated: 2023/02/06 17:30:51 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "stddef.h"
+#include "stdlib.h"
 
-size_t	ft_strlen(const char *str)
+char	**ft_strsfree(char **strs)
 {
 	int	i;
 
+	if (!strs)
+		return (NULL);
 	i = 0;
-	while (str[i])
-		i++;
-	return (i);
-}
-
-size_t	ft_tablen(char **tab)
-{
-	int	i;
-
-	i = 0;
-	while (tab[i])
-		i++;
-	return (i);
+	while (strs[i])
+		free(strs[i++]);
+	free(strs);
+	return (strs);
 }

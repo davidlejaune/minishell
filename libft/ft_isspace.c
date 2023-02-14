@@ -1,33 +1,26 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strlen.c                                        :+:      :+:    :+:   */
+/*   ft_isspace.c                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/11/09 23:13:50 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/07 22:37:55 by mirsella         ###   ########.fr       */
+/*   Created: 2023/02/06 17:17:48 by mirsella          #+#    #+#             */
+/*   Updated: 2023/02/09 21:38:28 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "stddef.h"
-
-size_t	ft_strlen(const char *str)
+int	ft_isspace(char c)
 {
-	int	i;
-
-	i = 0;
-	while (str[i])
-		i++;
-	return (i);
+	return ((c >= 9 && c <= 13) || c == 32);
 }
 
-size_t	ft_tablen(char **tab)
+int	ft_skip_spaces(char *str)
 {
 	int	i;
 
 	i = 0;
-	while (tab[i])
+	while (ft_isspace(str[i]))
 		i++;
 	return (i);
 }

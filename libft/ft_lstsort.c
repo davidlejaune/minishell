@@ -1,33 +1,37 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strlen.c                                        :+:      :+:    :+:   */
+/*   ft_lstsort.c                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/11/09 23:13:50 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/07 22:37:55 by mirsella         ###   ########.fr       */
+/*   Created: 2023/02/13 09:47:15 by mirsella          #+#    #+#             */
+/*   Updated: 2023/02/13 11:12:11 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "stddef.h"
+#include "libft.h"
 
-size_t	ft_strlen(const char *str)
+void	ft_lstsort(t_list **lst, int (*cmp)(void *, void *))
 {
-	int	i;
+	t_list	*tmp;
+	t_list	*tmp2;
+	void	*content;
 
-	i = 0;
-	while (str[i])
-		i++;
-	return (i);
-}
-
-size_t	ft_tablen(char **tab)
-{
-	int	i;
-
-	i = 0;
-	while (tab[i])
-		i++;
-	return (i);
+	tmp = *lst;
+	while (tmp)
+	{
+		tmp2 = tmp->next;
+		while (tmp2)
+		{
+			if (cmp(tmp->content, tmp2->content) > 0)
+			{
+				content = tmp->content;
+				tmp->content = tmp2->content;
+				tmp2->content = content;
+			}
+			tmp2 = tmp2->next;
+		}
+		tmp = tmp->next;
+	}
 }

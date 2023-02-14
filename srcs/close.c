@@ -1,33 +1,35 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strlen.c                                        :+:      :+:    :+:   */
+/*   close.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/11/09 23:13:50 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/07 22:37:55 by mirsella         ###   ########.fr       */
+/*   Created: 2023/02/07 22:49:48 by mirsella          #+#    #+#             */
+/*   Updated: 2023/02/13 12:29:43 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "stddef.h"
+#include "../includes/minishell.h"
 
-size_t	ft_strlen(const char *str)
+void	free_shell_data(t_data *data)
 {
-	int	i;
-
-	i = 0;
-	while (str[i])
-		i++;
-	return (i);
+	if (data->env)
+		ft_lstclear(&data->env, free);
+	if (data->procs)
+		procs_free(&data->procs);
+	rl_clear_history();
 }
 
-size_t	ft_tablen(char **tab)
+void	exit_shell(t_data *data)
 {
-	int	i;
+	free_shell_data(data);
+	exit(g_exit_code);
+}
 
-	i = 0;
-	while (tab[i])
-		i++;
-	return (i);
+void	exit_shell_error(t_data *data, char *msg)
+{
+	print_error(msg, 0);
+	free_shell_data(data);
+	exit(g_exit_code);
 }

@@ -1,33 +1,30 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strlen.c                                        :+:      :+:    :+:   */
+/*   env.c                                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/11/09 23:13:50 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/07 22:37:55 by mirsella         ###   ########.fr       */
+/*   Created: 2023/02/10 16:43:39 by mirsella          #+#    #+#             */
+/*   Updated: 2023/02/11 21:22:43 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "stddef.h"
+#include "../includes/minishell.h"
 
-size_t	ft_strlen(const char *str)
+char	*get_env_value(t_list *env, char *variable)
 {
-	int	i;
+	t_list	*tmp;
 
-	i = 0;
-	while (str[i])
-		i++;
-	return (i);
-}
-
-size_t	ft_tablen(char **tab)
-{
-	int	i;
-
-	i = 0;
-	while (tab[i])
-		i++;
-	return (i);
+	tmp = env;
+	while (tmp)
+	{
+		if (ft_strncmp(tmp->content, variable, ft_strlen(variable)) == 0)
+		{
+			if (*(char *)(tmp->content + ft_strlen(variable)) == '=')
+				return (tmp->content + ft_strlen(variable) + 1);
+		}
+		tmp = tmp->next;
+	}
+	return (NULL);
 }

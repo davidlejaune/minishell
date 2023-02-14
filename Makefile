@@ -1,11 +1,21 @@
-SRCS_FILES = main.c
-SRCS_DIR = srcs/
-SRCS = $(addprefix $(SRCS_DIR), $(SRCS_FILES))
+SRCS_MAIN = main.c signals.c close.c logging.c env.c ft_lstproc.c
+
+SRCS_PARSING = parse.c skipping.c pipeline_type.c prompt_loop_utils.c parse_redirections.c handle_redirections.c parse_command.c set_full_path.c \
+			   handle_expantion.c expander.c expand_wildcard.c wildcard_match.c get_dir_content.c
+SRCS_EXECUTION = execute.c  pipe.c
+
+
+SRCS_BUILTIN = builtin.c
+SRCS = $(addprefix srcs/, $(SRCS_MAIN)) \
+	   $(addprefix srcs/parsing/, $(SRCS_PARSING)) \
+	   $(addprefix srcs/execution/, $(SRCS_EXECUTION)) \
+	   $(addprefix srcs/builtin/, $(SRCS_BUILTIN))
 OBJS = $(SRCS:.c=.o)
 
 CC = cc
 CFLAGS = -Wall -Wextra -Werror
-CFLAGS += -g3 -fsanitize=address
+CFLAGS += -g3
+# CFLAGS += -fsanitize=address
 
 LIBFT = libft/libft.a
 NAME = minishell
@@ -13,7 +23,7 @@ NAME = minishell
 all: $(NAME)
 
 $(NAME): $(LIBFT) $(OBJS)
-	$(CC) $(CFLAGS) -Iincludes -o $(NAME) $(OBJS) $(LIBFT)
+	$(CC) $(CFLAGS) -o $(NAME) $(OBJS) $(LIBFT) -lreadline
 
 clean:
 	rm -f $(OBJS)
