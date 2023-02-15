@@ -13,6 +13,7 @@
 #include "../includes/minishell.h"
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 int	g_exit_code;
 

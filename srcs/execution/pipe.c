@@ -66,7 +66,8 @@ int	child(t_data *data, t_proc *proc)
 		{
 			if (proc->next_pipeline == PIPE)
 			{
-				if (double_dup2(proc->pipes[0], proc->pipes[1]) == -1)
+				proc->next->fd_in = proc->pipes[0];
+				if (double_dup2(proc->fd_in, proc->pipes[1]) == -1)
 					exit(1);
 			}
 				if (dup2(proc->pipe[0], STDIN_FILENO) == -1)

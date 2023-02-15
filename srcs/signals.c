@@ -12,7 +12,7 @@
 
 #include "../includes/minishell.h"
 #include <readline/readline.h>
-#include <readline/rltypedefs.h>
+// #include <readline/rltypedefs.h>
 
 void	sig_handler(int signo, siginfo_t *info, void *context)
 {
