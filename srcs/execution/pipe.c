@@ -6,7 +6,7 @@
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/14 11:51:18 by dly               #+#    #+#             */
-/*   Updated: 2023/02/14 20:36:35 by dly              ###   ########.fr       */
+/*   Updated: 2023/02/15 19:19:15 by dly              ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,11 +57,21 @@ int	close_pipe(t_proc *proc)
 
 int	child(t_data *data, t_proc *proc)
 {
+	int	i;
+	t_proc *tmp;
+
+	i = 0;
 	open_pipe(proc);	
-	printf("lol");
 	while (proc)
 	{
-		proc->pid = fork();
+		tmp = proc;
+		if (proc->type == SUBSHELL)
+			child(data, proc->procs);
+		{
+			proc->pid = fork();
+			i++;
+
+		}
 		if (!proc->pid)
 		{
 			if (proc->next_pipeline == PIPE)
@@ -82,9 +92,54 @@ int	child(t_data *data, t_proc *proc)
 		{
 
 		}
+		
+		if (proc->next_pipeline == AND || proc->next_pipeline == OR)
+		{
+			while (1)
+			{
+				waitpid(tmp->pid, NULL, 0);
+				if (tmp->next_pipeline != AND && tmp->next_pipeline != OR)
+				{
+					tmp = tmp->next;
+					break ;
+				}
+			}
+		}
 		proc = proc->next;
 	}
 	
 	waitpid(-1, NULL, 0);
 	return (0);
+}
+
+int	child(t_data *data, t_proc *proc)
+{
+	t_proc *tmp;
+
+	tmp = proc;
+	open_pipe(proc);
+	while (proc)
+	{
+		if (proc->type == SUBSHELL)
+			child(data, proc->procs);
+		if (proc->next_pipeline != AND && proc->next_pipeline != OR) 
+		proc->pid = fork();
+
+		if (!proc->pid)
+		{
+
+		}
+		if (tmp->next_pipeline == AND || tmp->next_pipeline == OR)
+			break ;
+		proc = proc->next;
+	}
+	while(tmp)
+	{
+		waitpid(tmp->pid, NULL, 0);
+		if (tmp->next_pipeline == AND || tmp->next_pipeline == OR)
+			break ;
+		tmp = tmp->next;
+	}
+	if (proc)
+		child(data, proc);
 }
