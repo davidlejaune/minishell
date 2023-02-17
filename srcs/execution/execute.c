@@ -6,13 +6,17 @@
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/13 15:01:01 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/14 16:49:10 by dly              ###   ########.fr       */
+/*   Updated: 2023/02/17 20:05:22 by dly              ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../../includes/minishell.h"
 
 int	child(t_data *data, t_proc *proc);
+int	open_pipe(t_proc *proc);
+int	echo(t_proc *proc);
+int	pwd(t_proc *proc);
+int	env(t_data *data, t_proc *proc);
 // dev function
 void	print_procs(t_proc *procs, int layer)
 {
@@ -59,6 +63,13 @@ void	print_procs(t_proc *procs, int layer)
 int	execute(t_data *data)
 {
 	print_procs(data->procs, 0);
-	child(data, data->procs);	
+	open_pipe(data->procs);
+	// printf("%s\n",get_env_value(data->env, "OLDPWD"));
+	// printf("%s\n",get_env_value(data->env, "PWD"));
+	// if (!ft_strcmp(data->procs->args->content, "env"))
+	// {
+		// env(data, data->procs);
+	// }
+	child(data, data->procs);
 	return (0);
 }

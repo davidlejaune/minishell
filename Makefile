@@ -5,7 +5,7 @@ SRCS_PARSING = parse.c skipping.c pipeline_type.c prompt_loop_utils.c parse_redi
 SRCS_EXECUTION = execute.c  pipe.c
 
 
-SRCS_BUILTIN = builtin.c
+SRCS_BUILTIN = builtin.c echo.c pwd.c env.c
 SRCS = $(addprefix srcs/, $(SRCS_MAIN)) \
 	   $(addprefix srcs/parsing/, $(SRCS_PARSING)) \
 	   $(addprefix srcs/execution/, $(SRCS_EXECUTION)) \

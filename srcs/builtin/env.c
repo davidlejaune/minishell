@@ -1,33 +1,23 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   builtin.c                                          :+:      :+:    :+:   */
+/*   env.c                                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/02/13 22:56:25 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/17 17:09:25 by dly              ###   ########.fr       */
+/*   Created: 2023/02/17 18:07:50 by dly               #+#    #+#             */
+/*   Updated: 2023/02/17 18:24:33 by dly              ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../../includes/minishell.h"
 
-int	isbuiltin(char *cmd)
+int	env(t_data *data, t_proc *proc)
 {
-	if (ft_strcmp(cmd, "echo") == 0)
-		return (1);
-	else if (ft_strcmp(cmd, "cd") == 0)
-		return (1);
-	else if (ft_strcmp(cmd, "pwd") == 0)
-		return (1);
-	else if (ft_strcmp(cmd, "export") == 0)
-		return (1);
-	else if (ft_strcmp(cmd, "unset") == 0)
-		return (1);
-	else if (ft_strcmp(cmd, "env") == 0)
-		return (1);
-	else if (ft_strcmp(cmd, "exit") == 0)
-		return (1);
-	else
-		return (0);
+	while(data->env)
+	{
+		ft_putendl_fd(data->env->content, proc->fd_out);
+		data->env = data->env->next;
+	}
+	return (0);
 }
