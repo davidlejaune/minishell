@@ -1,26 +1,26 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_strsfree.c                                      :+:      :+:    :+:   */
+/*   unset.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/02/06 13:39:19 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/06 17:30:51 by mirsella         ###   ########.fr       */
+/*   Created: 2023/02/20 17:55:10 by mirsella          #+#    #+#             */
+/*   Updated: 2023/02/20 23:53:35 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "stdlib.h"
+#include "../../includes/minishell.h"
 
-char	**ft_strsfree(char **strs)
+int	builtin_unset(t_proc *proc, t_list *env)
 {
-	int	i;
+	t_list	*tmp;
 
-	if (!strs)
-		return (NULL);
-	i = 0;
-	while (strs[i])
-		free(strs[i++]);
-	free(strs);
-	return (strs);
+	tmp = proc->args->next;
+	while (tmp)
+	{
+		remove_env_var(env, tmp->content);
+		tmp = tmp->next;
+	}
+	return (0);
 }

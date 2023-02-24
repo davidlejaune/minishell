@@ -6,38 +6,60 @@
 /*   By: lgillard <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/06 13:53:10 by lgillard          #+#    #+#             */
-/*   Updated: 2023/02/13 18:21:26 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/21 19:44:43 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minishell.h"
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
 
-int	g_exit_code;
+// because the exit codes are between 0 and 255. it overflow if > 255
+unsigned char	g_exit_code;
 
-int	init_shell(t_data *data, char **envp)
+int	init_shell(t_list **env, char **envp)
 {
-	char	**env;
+	char	**env_tab;
+	char	*tmp;
+	t_list	*lst;
 
 	g_exit_code = 0;
-	data->original_stdin = dup(STDIN_FILENO);
-	data->original_stdout = dup(STDOUT_FILENO);
-	if (data->original_stdin == -1 || data->original_stdout == -1)
-		return (perror("dup"), -1);
 	call_sigaction();
-	env = ft_tabdup(envp);
-	if (!env)
+	if (*envp)
+	{
+		env_tab = ft_tabdup(envp);
+		if (!env)
+			return (perror("malloc"), -1);
+		*env = ft_lstnew_strs(ft_tablen(env_tab), env_tab);
+		free(env_tab);
+		if (!(*env))
+			return (perror("malloc"), -1);
+	}
+	tmp = ft_strdup("");
+	if (!tmp)
 		return (perror("malloc"), -1);
-	data->env = ft_lstnew_strs(ft_tablen(env), env);
-	free(env);
-	if (!data->env)
+	lst = ft_lstnew(tmp);
+	if (!lst)
 		return (perror("malloc"), -1);
+	ft_lstadd_front(env, lst);
 	return (0);
 }
 
-int	prompt_loop(t_data *data)
+int	handle_line(char *line, t_list *env)
+{
+	int		ret;
+	t_proc	*procs;
+
+	procs = NULL;
+	ret = parse(line, env, &procs, NULL);
+	if (ret)
+		return (procs_free(&procs), ret);
+	ret = execute(procs, env);
+	procs_free(&procs);
+	return (ret);
+}
+
+int	prompt_loop(t_list *env)
 {
 	char	*line;
 	int		ret;
@@ -46,35 +68,31 @@ int	prompt_loop(t_data *data)
 	while (1)
 	{
 		free(line);
-		procs_free(&data->procs);
 		line = readline(PROMPT);
 		if (!line)
 			break ;
 		if (!*(line + ft_skip_spaces(line)))
 			continue ;
-		add_history_filter(line);
-		ret = parse(data, line, NULL);
+		if (!ft_isspace(*line))
+			add_history(line);
+		ret = handle_line(line, env);
 		if (ret < 0)
 			break ;
-		else if (ret > 0)
+		if (ret > 1)
 			continue ;
-		if (execute(data) < 0)
-			break ;
 	}
 	free(line);
-	procs_free(&data->procs);
 	return (0);
 }
 
 int	main(int argc, char **argv, char **envp)
 {
-	t_data	data;
+	t_list	*env;
 
 	(void)argc;
 	(void)argv;
-	bzero(&data, sizeof(t_data));
-	if (init_shell(&data, envp))
-		exit_shell(&data);
-	prompt_loop(&data);
-	exit_shell(&data);
+	if (init_shell(&env, envp))
+		exit_shell(env);
+	prompt_loop(env);
+	exit_shell(env);
 }

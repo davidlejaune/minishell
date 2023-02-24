@@ -6,28 +6,34 @@
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/07 22:52:18 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/13 18:12:54 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/24 20:13:06 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minishell.h"
 #include <unistd.h>
 
-t_proc	*create_and_push_proc(t_data *data, t_proc *last_proc)
+int	create_and_push_proc(t_proc **first, t_proc **last_proc, t_proc **proc)
 {
 	t_proc	*new;
 
 	new = new_proc();
 	if (!new)
-		return (NULL);
-	if (!last_proc)
-		data->procs = new;
-	else if (last_proc->type == COMMAND
-		|| (last_proc->type == SUBSHELL && last_proc->procs))
-		last_proc->next = new;
-	else if (last_proc->type == SUBSHELL && !last_proc->procs)
-		last_proc->procs = new;
-	return (new);
+		return (-1);
+	new->prev = *last_proc;
+	*proc = new;
+	if (!*first)
+		*first = new;
+	if (*last_proc && (*last_proc)->type == COMMAND)
+		(*last_proc)->next = new;
+	else if (*last_proc
+		&& (*last_proc)->type == SUBSHELL && (*last_proc)->procs)
+		(*last_proc)->next = new;
+	else if (*last_proc
+		&& (*last_proc)->type == SUBSHELL && !(*last_proc)->procs)
+		(*last_proc)->procs = new;
+	*last_proc = new;
+	return (0);
 }
 
 t_proc	*new_proc(void)
@@ -43,32 +49,29 @@ t_proc	*new_proc(void)
 	new->pipes[0] = -1;
 	new->pipes[1] = -1;
 	new->next = NULL;
+	new->prev = NULL;
 	new->args = NULL;
+	new->path = NULL;
+	new->line = NULL;
 	new->procs = NULL;
 	new->pid = -1;
-	new->exit_status = -1;
+	new->exit_code = -1;
 	return (new);
 }
 
-t_proc	*get_last_proc(t_proc *procs)
+void	proc_free(t_proc *proc)
 {
-	t_proc	*tmp;
-
-	tmp = procs;
-	while (tmp->next)
-		tmp = tmp->next;
-	return (tmp);
-}
-
-// useless ?
-void	push_back_proc(t_proc *procs, t_proc *proc)
-{
-	t_proc	*tmp;
-
-	tmp = procs;
-	while (tmp->next)
-		tmp = tmp->next;
-	tmp->next = proc;
+	if (proc->line)
+		free(proc->line);
+	if (proc->args)
+		ft_lstclear(&proc->args, free);
+	if (proc->path)
+		free(proc->path);
+	if (proc->fd_in > 2)
+		close(proc->fd_in);
+	if (proc->fd_out > 2)
+		close(proc->fd_out);
+	free(proc);
 }
 
 void	procs_free(t_proc **proc)
@@ -77,21 +80,18 @@ void	procs_free(t_proc **proc)
 
 	if (!proc || !*proc)
 		return ;
+	while ((*proc)->prev)
+		*proc = (*proc)->prev;
 	while (*proc)
 	{
 		tmp = *proc;
 		*proc = (*proc)->next;
-		if (tmp->args)
-			ft_lstclear(&tmp->args, free);
-		if (tmp->path)
-			free(tmp->path);
 		if (tmp->procs)
+		{
+			tmp->procs->prev = NULL;
 			procs_free(&tmp->procs);
-		if (tmp->fd_in > 2)
-			close(tmp->fd_in);
-		if (tmp->fd_out > 2)
-			close(tmp->fd_out);
-		free(tmp);
+		}
+		proc_free(tmp);
 	}
 	*proc = NULL;
 }

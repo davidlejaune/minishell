@@ -6,11 +6,13 @@
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/12 21:57:59 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/14 15:32:47 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/17 00:31:42 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../../includes/minishell.h"
+#include <ctype.h>
+#include <stdio.h>
 
 struct s_chars
 {
@@ -19,30 +21,88 @@ struct s_chars
 	char	*joined;
 };
 
-// char	*expand_individual(char *line, int *i, t_list *env)
-// {
-// 	char	*tmp;
-// 
-// 	if (*line == '\'')
-// 		tmp = expand_single_quote(line, i);
-// 	else if (*line == '"')
-// 		tmp = expand_double_quote(env, line, i);
-// 	else if (*line == '$')
-// 		tmp = expand_var(env, line, i);
-// 	else
-// 	{
-// 		tmp = ft_strdup((char [2]){*line, 0});
-// 		(*i)++;
-// 	}
-// 	if (!tmp)
-// 		return (perror("malloc"), NULL);
-// 	return (tmp);
-// }
+char	*expand_one(char *line, t_list *env, int *index)
+{
+	char	*tmp;
 
-char	*expand_vars(t_list *env, char *line)
+	if (is_wildcard(line))
+		tmp = expand_wildcard(line, index);
+	else if (*line == '\'' || *line == '"')
+		tmp = get_in_quote(line, index);
+	else if (*line == '$')
+		tmp = expand_var(env, line, index);
+	else
+	{
+		tmp = ft_strdup((char []){*line, 0});
+		(*index)++;
+	}
+	if (!tmp)
+		return (NULL);
+	return (tmp);
+}
+
+char	*expand_vars_in_double_quote(char *line, int *index, t_list *env)
 {
 	int				i;
 	struct s_chars	chars;
+
+	i = 1;
+	chars.str = ft_strdup("\"");
+	if (!chars.str)
+		return (perror("malloc"), NULL);
+	while (line[i] && line[i] != '"')
+	{
+		if (line[i] == '$')
+			chars.joined = expand_var(env, line + i, &i);
+		else
+			chars.joined = ft_strdup((char [2]){line[i++], 0});
+		if (!chars.joined)
+			return (perror("malloc"), NULL);
+		chars.tmp = ft_strjoin_free(chars.str, chars.joined);
+		if (!chars.tmp)
+			return (perror("malloc"), NULL);
+		chars.str = chars.tmp;
+	}
+	*index += i + 1;
+	chars.tmp = ft_strjoin_free(chars.str, ft_strdup("\""));
+	if (!chars.tmp)
+		return (perror("malloc"), NULL);
+	return (chars.tmp);
+}
+
+char	*expand_vars(char *line, t_list *env)
+{
+	struct s_chars	chars;
+	int				i;
+
+	i = 0;
+	chars.str = ft_strdup("");
+	if (!chars.str)
+		return (perror("malloc"), NULL);
+	while (line[i])
+	{
+		if (line[i] == '$')
+			chars.tmp = expand_var(env, line + i, &i);
+		else if (line[i] == '"')
+			chars.tmp = expand_vars_in_double_quote(line + i, &i, env);
+		else if (line[i] == '\'')
+			chars.tmp = ft_substr(line, i, skip_quotes(line + i));
+		else
+			chars.tmp = ft_strdup((char []){line[i++], 0});
+		if (line[i] == '\'')
+			i += skip_quotes(line + i);
+		if (!chars.tmp)
+			return (free(chars.str), perror("malloc"), NULL);
+		chars.joined = ft_strjoin_free(chars.str, chars.tmp);
+		chars.str = chars.joined;
+	}
+	return (chars.str);
+}
+
+char	*remove_quotes(char *line)
+{
+	struct s_chars	chars;
+	int				i;
 
 	i = 0;
 	chars.str = ft_strdup("");
@@ -51,45 +111,18 @@ char	*expand_vars(t_list *env, char *line)
 	while (line[i])
 	{
 		if (line[i] == '\'' || line[i] == '"')
-		{
-			chars.tmp = ft_strndup(line + i, skip_quotes(line + i));
-			i += skip_quotes(line + i);
-		}
-		else if (line[i] == '$')
-			chars.tmp = expand_var(env, line + i, &i);
+			chars.tmp = get_in_quote(line + i, &i);
 		else
 			chars.tmp = ft_strdup((char []){line[i++], 0});
 		if (!chars.tmp)
-			return (free(chars.tmp), NULL);
+			return (free(chars.str), NULL);
 		chars.joined = ft_strjoin_free(chars.str, chars.tmp);
 		chars.str = chars.joined;
 	}
 	return (chars.str);
 }
 
-// char	*expand_everything(t_list *env, char *line)
-// {
-// 	int		i;
-// 	char	*str;
-// 	char	*tmp;
-// 	char	*expanded;
-// 
-// 	i = 0;
-// 	str = ft_strdup("");
-// 	if (!str)
-// 		return (perror("malloc"), NULL);
-// 	while (line[i])
-// 	{
-// 		expanded = expand_individual(line + i, &i, env);
-// 		if (!expanded)
-// 			return (free(str), free(line), NULL);
-// 		tmp = ft_strjoin_free(str, expanded);
-// 		str = tmp;
-// 	}
-// 	return (str);
-// }
-
-char	*expand_everything(t_list *env, char *line)
+char	*expand_everything(char *line, t_list *env)
 {
 	int				i;
 	struct s_chars	chars;
@@ -100,16 +133,9 @@ char	*expand_everything(t_list *env, char *line)
 		return (perror("malloc"), NULL);
 	while (line[i])
 	{
-		if (line[i] == '\'')
-			chars.tmp = expand_single_quote(line + i, &i);
-		else if (line[i] == '"')
-			chars.tmp = expand_double_quote(env, line + i, &i);
-		else if (line[i] == '$')
-			chars.tmp = expand_var(env, line + i, &i);
-		else
-			chars.tmp = ft_strdup((char []){line[i++], 0});
+		chars.tmp = expand_one(line + i, env, &i);
 		if (!chars.tmp)
-			return (free(chars.tmp), NULL);
+			return (free(chars.str), NULL);
 		chars.joined = ft_strjoin_free(chars.str, chars.tmp);
 		chars.str = chars.joined;
 	}

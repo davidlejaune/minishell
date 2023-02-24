@@ -6,7 +6,7 @@
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/09 18:10:11 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/12 17:58:42 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/15 23:15:32 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,17 +15,6 @@
 static int	ismeta(char c)
 {
 	return (c == '|' || c == '&');
-}
-
-int	is_nextpipeline_possible(t_next_pipeline next_pipeline, char *line)
-{
-	if ((next_pipeline != INVALID && !*line)
-		|| (next_pipeline == INVALID && *line))
-	{
-		print_syntax_error("near unexpected token ", *(line - 1));
-		return (0);
-	}
-	return (1);
 }
 
 int	next_pipeline(char *line)

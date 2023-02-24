@@ -6,7 +6,7 @@
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/03 08:57:17 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/14 16:47:54 by dly              ###   ########.fr       */
+/*   Updated: 2023/02/24 21:01:00 by dly              ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,10 +24,13 @@
 # include "sys/stat.h" // stat
 # include "errno.h" // errno
 # include "sys/types.h" // pid_t
-# include "sys/wait.h" // pid_t
 # include "dirent.h" // opendir, readdir, closedir
+# include <limits.h> // PATH_MAX
+# include "sys/wait.h" // waitpid
 
 # define PROMPT "minishell$ "
+
+extern unsigned char	g_exit_code;
 
 typedef enum e_next_pipeline
 {
@@ -46,14 +49,11 @@ typedef enum e_type
 // represent a command or a subshell
 //
 // if type == COMMAND. procs == NULL.
-// else if type == SUBSHELL. args == NULL, path == NULL
-//
-// don't know between pipes[2] or fd_in/out yet,
-// we'll see later when we'll implement pipes
-// rappel: pipes[0] == read, pipes[1] == write
+// else if type == SUBSHELL. args == NULL, path == NULL, line == NULL.
 typedef struct s_proc
 {
 	t_type			type;
+	char			*line;
 	t_list			*args;
 	char			*path;
 	struct s_proc	*procs;
@@ -62,29 +62,17 @@ typedef struct s_proc
 	int				fd_out;
 	int				pipes[2];
 	pid_t			pid;
-	int				exit_status;
+	int				exit_code;
 	struct s_proc	*next;
+	struct s_proc	*prev;
 }				t_proc;
 
-// t_proc *procs: represent the commands or subshell to exec.
-// ex : (ls | grep a) && (ls | grep b) would be :
-// 2 elements in the list of type SUBSHELL:
-// each element have 2 t_proc of type COMMAND, one for ls and one for grep
-typedef struct s_data
-{
-	int			original_stdin;
-	int			original_stdout;
-	t_list		*env;
-	t_list		*dir_content;
-	t_proc		*procs;
-}				t_data;
-
 // parsing/parse.c
-int				parse(t_data *data, char *line, t_proc *last_proc);
+int				parse(char *line, t_list *env, t_proc **first,
+					t_proc *last_proc);
+char			*get_next_token(char *line, int *index);
 
 // parsing/pipeline_type.c
-int				is_nextpipeline_possible(
-					t_next_pipeline next_pipeline, char *line);
 int				next_pipeline(char *line);
 int				skip_pipeline(t_next_pipeline pipeline_type);
 t_next_pipeline	get_pipeline_type(char *line);
@@ -93,51 +81,61 @@ t_next_pipeline	get_pipeline_type(char *line);
 void			call_sigaction(void);
 
 // close.c
-void			free_shell_data(t_data *data);
-void			exit_shell(t_data *data);
-void			exit_shell_error(t_data *data, char *msg);
+void			free_shell_data(t_list *env);
+void			exit_shell(t_list *env);
+void			exit_shell_error(t_list *env, char *msg);
 
 // logging.c
 int				print_syntax_error(char *message, char optional);
+int				print_errorendl(char *msg, char *optional);
 int				print_error(char *msg, char *optional);
-int				print_error_char(char *msg, char optional);
 
-// proc/ft_lst.c
-t_proc			*create_and_push_proc(t_data *data, t_proc *last_proc);
+// lstproc.c
+int				create_and_push_proc(
+					t_proc **first, t_proc **last_proc, t_proc **proc);
 t_proc			*new_proc(void);
-t_proc			*get_last_proc(t_proc *procs);
-void			push_back_proc(t_proc *procs, t_proc *proc);
 void			procs_free(t_proc **proc);
 
 // parsing/skipping.c
 int				skip_quotes(char *line);
 int				skip_parenthesis(char *line);
 
-// parsing/prompt_loop_utils.c
-void			add_history_filter(char *line);
-int				check_unclosed(char *line);
+// parsing/check_unclosed_and_invalid_pipeline.c
+int				check_unclosed_and_invalid_pipeline(char *line);
 
 // env.c
-char			*get_env_value(t_list *env, char *variable);
+char			*get_env_var(t_list *env, char *variable);
+int				replace_env_var(t_list *env, char *variable, char *value);
+int				add_env_var(t_list *env, char *variable, char *value);
+int				remove_env_var(t_list *env, char *variable);
 
 // parsing/parse_redirections.c
-char			*get_word_expand(t_data *data, char *line, int *ret);
-int				parse_redirections(t_data *data, char *line, t_proc *proc);
+char			*get_redirect_word_expand(char *line, int *ret, t_list *env);
+int				parse_redirections(char *line, t_proc *proc, t_list *env);
 
 // parsing/handle_redirections.c
-int				output_redirection(t_data *data, char *line, t_proc *proc);
+int				output_redirection(char *line, t_proc *proc, t_list *env);
+int				input_redirection(char *line, t_proc *proc, t_list *env);
+
+// parsing/heredoc.c
+int				heredoc_redirection(char *line, t_proc *proc, t_list *env);
 
 // parsing/handle_expantion.c
-char			*expand_vars(t_list *env, char *line);
-char			*expand_everything(t_list *env, char *str);
+char			*expand_one(char *line, t_list *env, int *index);
+char			*expand_vars(char *line, t_list *env);
+char			*expand_vars_in_double_quote(
+					char *line, int *index, t_list *env);
+char			*remove_quotes(char *line);
+char			*expand_everything(char *str, t_list *env);
 
 // parsing/expanders.c
 char			*expand_var(t_list *env, char *str, int *index);
-char			*expand_single_quote(char *str, int *index);
-char			*expand_double_quote(t_list *env, char *str, int *index);
+char			*get_in_quote(char *str, int *index);
 
 // parsing/expand_wildcard.c
-char			*expand_wildcards(char *line, t_list *env);
+int				is_wildcard(char *line);
+char			*expand_wildcard(char *line, int *i);
+char			*expand_wildcards(char *line);
 
 // parsing/get_dir_content.c
 t_list			*get_lst_of_dir(char *path);
@@ -146,18 +144,57 @@ t_list			*get_lst_of_dir(char *path);
 char			*get_matching_files(char *pattern);
 
 // parsing/parse_command.c
-char			*get_next_token(char *line, int *index);
-int				parse_command(t_data *data, char *line, t_proc *proc);
+int				parse_command(char *line, t_proc *proc, t_list *env);
+int				parse_line_to_proc(char *line, t_proc *proc, t_list *env);
 
 // parsing/set_full_path.c
-int				set_full_path(t_list *env, char **cmd);
+int				set_full_path(t_list *env, char *cmd, char **full_path);
 
 // execution/execute.c
-int				execute(t_data *data);
+int				print_procs(t_proc *procs, t_list *env, int layer);
+int				execute(t_proc *procs, t_list *env);
 
 // builtin/builtin.c
 int				isbuiltin(char *cmd);
+int				exec_builtin(t_proc *proc, t_list *env);
 
-extern int	g_exit_code;
+// builtin/echo.c
+int				builtin_echo(t_proc *proc);
+
+// builtin/unset.c
+int				builtin_unset(t_proc *proc, t_list *env);
+
+// builtin/export.c
+int				builtin_export(t_proc *proc, t_list *env);
+
+// builtin/cd.c
+int				builtin_cd(t_proc *proc, t_list *env);
+
+// builtin/exit.c
+int				builtin_exit(t_proc *proc, t_list *env);
+
+// builtin/ft_env.c
+int				builtin_env(t_proc *proc, t_list *env);
+
+// builtin/pwd.c
+int				builtin_pwd(t_proc *proc);
+
+// parsing/stat.c
+int				is_file_executable(char *path);
+int				is_file_readable(char *path);
+int				is_file_writable(char *path);
+
+// execute/pipe.c
+int				double_dup2(int in, int out);
+int				open_pipe(t_proc *proc);
+void			close_pipe(t_proc *proc);
+void			assign_pipe_cmd(t_proc *proc);
+void			assign_pipe_subshell(t_proc *tmp, t_proc *proc, t_list *env);
+
+// execute/processus.c
+int				process(t_proc *proc, t_list *env);
+
+// execute/operator.c
+int				recursive_and_or(t_proc *proc, t_list *env, int need_open);
 
 #endif

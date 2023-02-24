@@ -6,75 +6,70 @@
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/10 15:38:38 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/12 17:59:17 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/24 19:53:40 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../../includes/minishell.h"
 #include <string.h>
+#include <unistd.h>
 
 static int	ismeta(char c)
 {
-	return (c == '>' || c == '<' || c == '|' || c == '&');
+	return (c == '>' || c == '<' || c == '|' || c == '&'
+		|| c == '(' || c == ')');
 }
 
-char	*get_word_expand(t_data *data, char *line, int *ret)
+char	*get_redirect_word_expand(char *line, int *ret, t_list *env)
 {
 	int		stop;
 	char	*tmp;
 
 	if (*(line + ft_skip_spaces(line)) == 0)
-		return (*ret = 1,
-			(char [2]){print_syntax_error("empty redirect", 0), 0});
+		return (*ret = 1, print_syntax_error("near empty redirect", 0), NULL);
 	stop = 0;
 	while (line[stop] && !ismeta(line[stop]) && !ft_isspace(line[stop]))
 	{
 		if (line[stop] == '*' || line[stop] == '(')
-			return (*ret = 1, (char [2]){print_syntax_error(
-					"ambiguous redirect ", line[stop]), 0});
+			return (*ret = 1, print_syntax_error("ambiguous redirect ",
+					line[stop]), NULL);
 		if (line[stop] == '\'' || line[stop] == '"')
 			stop += skip_quotes(line);
-		else if (line[stop] == '(')
-			stop += skip_parenthesis(line);
 		else
 			stop++;
 	}
 	tmp = ft_substr(line, 0, stop);
-	line = expand_everything(data->env, tmp);
-	free(tmp);
-	if (!line)
+	if (!tmp)
 		return (*ret = 1, perror("malloc"), NULL);
-	return (*ret = 0, line);
+	line = expand_everything(tmp, env);
+	if (!line)
+		return (*ret = 1, free(tmp), perror("malloc"), NULL);
+	return (*ret = 0, free(tmp), line);
 }
 
 int	remove_redirections(char *line)
 {
 	int	i;
 
-	i = 0;
-	i += ft_skip_spaces(line);
-	while (line[i] == '>' || line[i] == '<')
-		line[i++] = ' ';
-	i += ft_skip_spaces(line + i);
-	while (line[i] && !ismeta(line[i]) && !ft_isspace(line[i]))
+	line += ft_skip_spaces(line);
+	while (*line == '>' || *line == '<')
+		*line++ = ' ';
+	line += ft_skip_spaces(line);
+	while (*line && !ismeta(*line) && !ft_isspace(*line))
 	{
-		if (line[i] == '\'' || line[i] == '"')
-		{
-			ft_memset(line + i, ' ', skip_quotes(line + i));
-			i += skip_quotes(line + i);
-		}
-		else if (line[i] == '(')
-		{
-			ft_memset(line + i, ' ', skip_parenthesis(line + i));
-			i += skip_parenthesis(line + i);
-		}
+		if (*line == '\'' || *line == '"')
+			i = skip_quotes(line);
+		else if (*line == '(')
+			i = skip_parenthesis(line);
 		else
-			line[i++] = ' ';
+			i = 1;
+		ft_memset(line, ' ', i);
+		line += i;
 	}
 	return (i);
 }
 
-int	parse_redirections(t_data *data, char *line, t_proc *proc)
+int	parse_redirections(char *line, t_proc *proc, t_list *env)
 {
 	int	ret;
 
@@ -86,10 +81,14 @@ int	parse_redirections(t_data *data, char *line, t_proc *proc)
 			break ;
 		if (*line == '>')
 		{
-			ret = output_redirection(data, line + 1, proc);
+			ret = output_redirection(line + 1, proc, env);
 			line += remove_redirections(line);
 		}
-		// still need to parse input redirections here
+		else if (*line == '<')
+		{
+			ret = input_redirection(line + 1, proc, env);
+			line += remove_redirections(line);
+		}
 		else
 			line++;
 		if (ret)

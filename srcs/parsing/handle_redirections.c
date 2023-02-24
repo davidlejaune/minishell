@@ -6,7 +6,7 @@
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/11 22:31:48 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/14 11:36:30 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/24 16:15:12 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,25 +17,34 @@ static int	ismeta(char c)
 	return (c == '>' || c == '<' || c == '|' || c == '&' || c == '(');
 }
 
+int	open_reading_file(char *filename, t_proc *proc)
+{
+	if (is_file_readable(filename) == 0)
+		return (proc->fd_in = -1, g_exit_code = 1, 0);
+	if (proc->fd_in >= 3)
+		close(proc->fd_in);
+	proc->fd_in = open(filename, O_RDONLY);
+	if (proc->fd_in < 0)
+		print_errorendl(filename, strerror(errno));
+	return (0);
+}
+
 int	open_writing_file(char *filename, t_proc *proc, int append_flag)
 {
-	int	fd;
-
+	if (!is_file_writable(filename))
+		return (proc->fd_in = -1, g_exit_code = 1, 0);
 	if (proc->fd_out >= 3)
 		close(proc->fd_out);
 	if (append_flag)
-		fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
+		proc->fd_out = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
 	else
-		fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if (fd < 0)
-	{
-		print_error(filename, strerror(errno));
-		return (-1);
-	}
-	return (fd);
+		proc->fd_out = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (proc->fd_out < 0)
+		print_errorendl(filename, strerror(errno));
+	return (0);
 }
 
-int	output_redirection(t_data *data, char *line, t_proc *proc)
+int	output_redirection(char *line, t_proc *proc, t_list *env)
 {
 	char	*filename;
 	int		append;
@@ -45,17 +54,41 @@ int	output_redirection(t_data *data, char *line, t_proc *proc)
 	if (*line == '>')
 		append = 1;
 	line += append;
-	line += ft_skip_spaces(line + append);
+	line += ft_skip_spaces(line);
 	if (ismeta(*line))
 		return (print_syntax_error("unexpected token ", *(line)), 1);
-	filename = get_word_expand(data, line, &ret);
+	filename = get_redirect_word_expand(line, &ret, env);
 	if (ret)
 		return (ret);
-	if (!filename)
-		return (-1);
-	proc->fd_out = open_writing_file(filename, proc, append);
-	if (proc->fd_out == -1)
-		return (1);
+	ret = open_writing_file(filename, proc, append);
 	free(filename);
-	return (0);
+	return (ret);
+}
+
+int	input_redirection(char *line, t_proc *proc, t_list *env)
+{
+	char	*filename;
+	int		heredoc;
+	int		ret;
+
+	heredoc = 0;
+	ret = 0;
+	if (*line == '<')
+		heredoc = 1;
+	line += heredoc;
+	line += ft_skip_spaces(line);
+	if (ismeta(*line) || *line == 0)
+		return (print_syntax_error("unexpected token near empty redirect ",
+				*(line)), 1);
+	if (heredoc)
+		ret = heredoc_redirection(line, proc, env);
+	else
+	{
+		filename = get_redirect_word_expand(line, &ret, env);
+		if (ret)
+			return (ret);
+		ret = open_reading_file(filename, proc);
+		free(filename);
+	}
+	return (ret);
 }

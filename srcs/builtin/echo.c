@@ -6,33 +6,61 @@
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/17 16:23:07 by dly               #+#    #+#             */
-/*   Updated: 2023/02/17 17:15:13 by dly              ###   ########.fr       */
+/*   Updated: 2023/02/24 16:16:11 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../../includes/minishell.h"
 
-int	echo(t_proc *proc)
+static int	is_flag_n(char *str)
 {
-	int	option;
+	int	i;
+
+	i = 0;
+	if (str[i] == '-')
+		i++;
+	else
+		return (0);
+	while (str[i])
+	{
+		if (str[i] != 'n')
+			return (0);
+		i++;
+	}
+	return (1);
+}
+
+int	putnewline(int fd)
+{
+	if (ft_putchar_fd('\n', fd) == -1)
+		return (print_errorendl("echo: write error", strerror(errno)));
+	return (0);
+}
+
+int	builtin_echo(t_proc *proc)
+{
+	int		option;
+	t_list	*tmp;
 
 	option = 0;
-	proc->args = proc->args->next;
-	if (!proc->args)
-		return (ft_putstr_fd("\n", proc->fd_out), 0);
-	if (!ft_strcmp(proc->args->content, "-n"))
+	tmp = proc->args->next;
+	if (!tmp)
+		return (putnewline(proc->fd_out));
+	while (tmp && is_flag_n(tmp->content))
 	{
 		option = 1;
-		proc->args = proc->args->next;
+		tmp = tmp->next;
 	}
-	while (proc->args)
+	while (tmp)
 	{
-		ft_putstr_fd(proc->args->content, proc->fd_out);
-		proc->args = proc->args->next;
-		if (proc->args)
-			write(proc->fd_out, " ", 1);
+		if (ft_putstr_fd(tmp->content, proc->fd_out) == -1)
+			return (print_errorendl("echo: write error", strerror(errno)));
+		tmp = tmp->next;
+		if (tmp)
+			if (ft_putchar_fd(' ', proc->fd_out) == -1)
+				return (print_errorendl("echo: write error", strerror(errno)));
 	}
 	if (!option)
-		write(proc->fd_out, "\n", 1);
+		return (putnewline(proc->fd_out));
 	return (0);
 }
