@@ -6,7 +6,7 @@
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/21 19:17:06 by dly               #+#    #+#             */
-/*   Updated: 2023/02/24 21:21:33 by dly              ###   ########.fr       */
+/*   Updated: 2023/02/25 18:28 by dly              ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,6 +33,11 @@ static void	child(t_proc *tmp, t_proc *proc, t_list *env)
 			proc->exit_code = exec_builtin(proc, env);
 			exit(proc->exit_code);
 		}
+		if (tmp && tmp->prev)
+		{
+			while (tmp->prev)
+				tmp = tmp->prev;
+		}
 		close_pipe(tmp);
 		if (!access(proc->path, 0))
 			execve(proc->path, ft_lst_to_tab(proc->args), ft_lst_to_tab(env));
@@ -42,6 +47,18 @@ static void	child(t_proc *tmp, t_proc *proc, t_list *env)
 
 static void	wait_loop(t_proc *tmp, t_proc *proc, t_list *env)
 {
+	t_proc	*first;
+
+	first = tmp;
+	if (first && first->prev && first->prev->prev)
+	{
+		if (first->prev->type == SUBSHELL && first->prev->fd_out > 2 && first->prev->prev->next_pipeline == PIPE)
+		{
+			// printf("proc : %s, path in :%d   path out %d |||| out %d && in %d\n", tmp->path,tmp->fd_in, tmp->fd_out, first->prev->fd_out, first->prev->fd_in);
+			close(first->prev->fd_out);
+		}	
+	}
+
 	close_pipe(tmp);
 	while (tmp)
 	{
@@ -75,13 +92,16 @@ int	process(t_proc *proc, t_list *env)
 	while (proc)
 	{
 		parse_line_to_proc(proc->line, proc, env);
+		// printf("%s\n", proc->path);
 		if (!cmd_not_found(proc) && (proc->path || proc->type == SUBSHELL))
 		{
 			if (proc->type == COMMAND && proc->fd_in != -1)
+			{
 				child(tmp, proc, env);
+			}
 			if (proc->type == SUBSHELL)
 			{
-				assign_pipe_subshell(proc->procs, proc, env);
+				assign_pipe_subshell(proc);
 				process(proc->procs, env);
 				if (proc->next_pipeline == AND || proc->next_pipeline == OR)
 					return (recursive_and_or(proc, env, 0), 0);

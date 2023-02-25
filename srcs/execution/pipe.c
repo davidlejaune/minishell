@@ -6,7 +6,7 @@
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/14 11:51:18 by dly               #+#    #+#             */
-/*   Updated: 2023/02/24 21:38:07 by dly              ###   ########.fr       */
+/*   Updated: 2023/02/25 20:15:2 by dly              ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,8 +46,10 @@ void	close_pipe(t_proc *proc)
 			close_pipe(proc->procs);
 		if (proc->next_pipeline == PIPE)
 		{
-			close(proc->pipes[0]);
-			close(proc->pipes[1]);
+			if (proc->pipes[0] > 2)
+				close(proc->pipes[0]);
+			if (proc->pipes[0] > 2)
+				close(proc->pipes[1]);
 		}
 		proc = proc->next;
 	}
@@ -55,6 +57,14 @@ void	close_pipe(t_proc *proc)
 
 void	assign_pipe_cmd(t_proc *proc)
 {
+	if (proc->next->type == SUBSHELL)
+	{
+		if (proc->next->procs->fd_in == STDIN_FILENO)
+		{
+			proc->next->procs->fd_in = proc->pipes[0];
+			proc->next->fd_out = proc->pipes[1];
+		}
+	}
 	if (proc->fd_out == STDOUT_FILENO)
 	{
 		proc->fd_out = proc->pipes[1];
@@ -63,12 +73,15 @@ void	assign_pipe_cmd(t_proc *proc)
 	}
 }
 
-void	assign_pipe_subshell(t_proc *tmp, t_proc *proc, t_list *env)
+void	assign_pipe_subshell(t_proc *proc)
 {
 	if (proc->next_pipeline == PIPE)
 	{
 		if (proc->next->procs)
+		{
 			proc->next->procs->fd_in = proc->pipes[0];
+			proc->next->fd_out = proc->pipes[1];
+		}
 		if (proc->next->fd_in == STDIN_FILENO)
 			proc->next->fd_in = proc->pipes[0];
 		while (proc->procs)
@@ -80,6 +93,5 @@ void	assign_pipe_subshell(t_proc *tmp, t_proc *proc, t_list *env)
 			}
 			proc->procs = proc->procs->next;
 		}
-		process(tmp, env);
 	}
 }
