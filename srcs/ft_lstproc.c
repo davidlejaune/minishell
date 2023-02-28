@@ -6,7 +6,7 @@
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/07 22:52:18 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/24 20:13:06 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/27 22:40:28 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,6 +48,7 @@ t_proc	*new_proc(void)
 	new->fd_out = STDOUT_FILENO;
 	new->pipes[0] = -1;
 	new->pipes[1] = -1;
+	new->from_pipe = NULL;
 	new->next = NULL;
 	new->prev = NULL;
 	new->args = NULL;
@@ -71,7 +72,18 @@ void	proc_free(t_proc *proc)
 		close(proc->fd_in);
 	if (proc->fd_out > 2)
 		close(proc->fd_out);
+	if (proc->pipes[0] > 2)
+		close(proc->pipes[0]);
+	if (proc->pipes[1] > 2)
+		close(proc->pipes[1]);
 	free(proc);
+}
+
+int	get_status_of_last_proc(t_proc *proc)
+{
+	while (proc->next)
+		proc = proc->next;
+	return (proc->exit_code);
 }
 
 void	procs_free(t_proc **proc)

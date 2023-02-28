@@ -11,8 +11,11 @@ OBJS = $(SRCS:.c=.o)
 
 CC = cc
 CFLAGS = -Wall -Wextra -Werror
-CFLAGS += -g3
+# CFLAGS += -g3
 # CFLAGS += -fsanitize=address
+# for mac OS = -L /opt/homebrew/Cellar/readline/8.2.1/lib
+# export LDFLAGS="-L/opt/homebrew/opt/readline/lib"
+# export CPPFLAGS="-I/opt/homebrew/opt/readline/include"
 
 LIBFT = libft/libft.a
 NAME = minishell
@@ -21,7 +24,7 @@ all: $(NAME)
 
 $(NAME): $(LIBFT) $(OBJS)
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJS) $(LIBFT) -lreadline
-
+ 
 clean:
 	rm -f $(OBJS)
 

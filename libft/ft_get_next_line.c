@@ -6,7 +6,7 @@
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/11/16 14:54:00 by mirsella          #+#    #+#             */
-/*   Updated: 2023/01/03 23:17:15 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/28 15:40:51 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,7 @@ static char	*ft_s1join(char *s1, char *s2)
 		return (NULL);
 	str = malloc(sizeof(char) * (ft_strlen(s1) + ft_strlen(s2) + 1));
 	if (!str)
-		return (NULL);
+		return (free(s1), NULL);
 	ft_strlcpy(str, s1, ft_strlen(s1) + 1);
 	ft_strlcat(str, s2, ft_strlen(s1) + ft_strlen(s2) + 1);
 	free(s1);
@@ -107,6 +107,7 @@ char	*ft_get_next_line(int fd, int freee)
 	if (freee == 1)
 	{
 		free(storage);
+		storage = NULL;
 		return (NULL);
 	}
 	if (fd < 0 || BUFFER_SIZE <= 0)

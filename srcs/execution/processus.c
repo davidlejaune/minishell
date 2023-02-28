@@ -6,111 +6,87 @@
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/21 19:17:06 by dly               #+#    #+#             */
-/*   Updated: 2023/02/25 18:28 by dly              ###   ########.fr       */
+/*   Updated: 2023/02/28 14:23:29 by lgillard         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../../includes/minishell.h"
 
-static void	child(t_proc *tmp, t_proc *proc, t_list *env)
-{
-	if (proc->next_pipeline == PIPE)
-		assign_pipe_cmd(proc);
-	if (isbuiltin(proc->path) && (!tmp->next || tmp->next_pipeline == AND
-			|| tmp->next_pipeline == OR))
-	{
-		proc->exit_code = exec_builtin(proc, env);
-		g_exit_code = proc->exit_code;
-		return ;
-	}
-	proc->pid = fork();
-	if (!proc->pid)
-	{
-		if (double_dup2(proc->fd_in, proc->fd_out) == -1)
-			exit(1);
-		if (isbuiltin(proc->path))
-		{
-			proc->exit_code = exec_builtin(proc, env);
-			exit(proc->exit_code);
-		}
-		if (tmp && tmp->prev)
-		{
-			while (tmp->prev)
-				tmp = tmp->prev;
-		}
-		close_pipe(tmp);
-		if (!access(proc->path, 0))
-			execve(proc->path, ft_lst_to_tab(proc->args), ft_lst_to_tab(env));
-		exit(-1);
-	}
-}
-
-static void	wait_loop(t_proc *tmp, t_proc *proc, t_list *env)
-{
-	t_proc	*first;
-
-	first = tmp;
-	if (first && first->prev && first->prev->prev)
-	{
-		if (first->prev->type == SUBSHELL && first->prev->fd_out > 2 && first->prev->prev->next_pipeline == PIPE)
-		{
-			// printf("proc : %s, path in :%d   path out %d |||| out %d && in %d\n", tmp->path,tmp->fd_in, tmp->fd_out, first->prev->fd_out, first->prev->fd_in);
-			close(first->prev->fd_out);
-		}	
-	}
-
-	close_pipe(tmp);
-	while (tmp)
-	{
-		if (tmp->type == COMMAND && tmp->path)
-			waitpid(tmp->pid, &tmp->exit_code, 0);
-		g_exit_code = tmp->exit_code;
-		if (tmp->next_pipeline == AND || tmp->next_pipeline == OR)
-			break ;
-		tmp = tmp->next;
-	}
-	if (proc)
-		recursive_and_or(proc, env, 1);
-}
-
 int	cmd_not_found(t_proc *proc)
 {
+	char	buffer[1024];
+	int		ret;
+
 	if (!proc->path && proc->type == COMMAND)
 	{
-		proc->exit_code = 127;
-		g_exit_code = 127;
+		if (proc->exit_code == 0)
+			proc->exit_code = 127;
+		else if (proc->exit_code == -1)
+			proc->exit_code = 0;
+		if (proc->fd_in != STDIN_FILENO && proc->fd_out != STDOUT_FILENO)
+		{
+			ret = 1;
+			while (ret)
+			{
+				ret = read(proc->fd_in, &buffer, 1024);
+				write(proc->fd_out, &buffer, ret);
+			}
+		}
 		return (1);
 	}
 	return (0);
 }
 
-int	process(t_proc *proc, t_list *env)
+int	fill_procs(t_proc *proc, t_list *env)
 {
-	t_proc	*tmp;
+	int		ret;
 
-	tmp = proc;
+	ret = 0;
 	while (proc)
 	{
-		parse_line_to_proc(proc->line, proc, env);
-		// printf("%s\n", proc->path);
-		if (!cmd_not_found(proc) && (proc->path || proc->type == SUBSHELL))
-		{
-			if (proc->type == COMMAND && proc->fd_in != -1)
-			{
-				child(tmp, proc, env);
-			}
-			if (proc->type == SUBSHELL)
-			{
-				assign_pipe_subshell(proc);
-				process(proc->procs, env);
-				if (proc->next_pipeline == AND || proc->next_pipeline == OR)
-					return (recursive_and_or(proc, env, 0), 0);
-			}
-		}
+		ret = parse_line_to_proc(proc->line, proc, env);
+		if (ret)
+			return (ret);
 		if (proc->next_pipeline == AND || proc->next_pipeline == OR)
 			break ;
 		proc = proc->next;
 	}
-	wait_loop(tmp, proc, env);
+	return (ret);
+}
+
+void	handle_proc(t_proc *proc, t_proc *tmp, t_list *env)
+{
+	if (!cmd_not_found(proc) && (proc->path || proc->type == SUBSHELL))
+	{
+		assign_pipe(proc);
+		if (proc->type == COMMAND && proc->fd_in != -1)
+			child(tmp, proc, env);
+		if (proc->type == SUBSHELL)
+		{
+			process(proc->procs, env);
+			proc->exit_code = get_status_of_last_proc(proc->procs);
+		}
+	}
+}
+
+int	process(t_proc *proc, t_list *env)
+{
+	t_proc	*tmp;
+	int		ret;
+
+	tmp = proc;
+	ret = fill_procs(proc, env);
+	if (ret)
+		return (ret);
+	while (proc)
+	{
+		handle_proc(proc, tmp, env);
+		if (proc->next_pipeline == AND || proc->next_pipeline == OR)
+			break ;
+		proc = proc->next;
+	}
+	wait_loop(tmp);
+	if (proc)
+		recursive_and_or(proc, env, 0);
 	return (0);
 }

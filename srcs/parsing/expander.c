@@ -6,7 +6,7 @@
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/11 23:42:59 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/21 15:51:02 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/28 15:21:53 by lgillard         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,9 +19,41 @@ struct s_chars
 	char	*expanded;
 };
 
-static int	ismeta(char c)
+static int	is_valid_identifier(char *str)
 {
-	return (c == '\'' || c == '"' || c == '$');
+	int	i;
+
+	i = 0;
+	if (!ft_isalpha(str[i]) && str[i] != '_')
+		return (0);
+	while (str[i])
+	{
+		if (!ft_isalnum(str[i]) && str[i] != '_')
+			return (0);
+		i++;
+	}
+	return (1);
+}
+
+int	get_identifier_stop(char *line)
+{
+	int		stop;
+	char	*tmp;
+
+	stop = 1;
+	tmp = ft_substr(line, 1, stop);
+	if (!tmp)
+		return (-1);
+	while (is_valid_identifier(tmp) && line[stop])
+	{
+		stop++;
+		free(tmp);
+		tmp = ft_substr(line, 1, stop);
+		if (!tmp)
+			return (-1);
+	}
+	free(tmp);
+	return (stop - 1);
 }
 
 char	*expand_var(t_list *env, char *line, int *index)
@@ -36,8 +68,9 @@ char	*expand_var(t_list *env, char *line, int *index)
 		*index += 2;
 		return (ft_itoa(g_exit_code));
 	}
-	while (line[stop] && !ismeta(line[stop]) && !isspace(line[stop]))
-		stop++;
+	stop += get_identifier_stop(line);
+	if (stop == -1)
+		return (NULL);
 	*index += stop;
 	if (stop == 1)
 		return (ft_strdup("$"));
@@ -61,5 +94,20 @@ char	*get_in_quote(char *line, int *index)
 		stop++;
 	*index += stop + 1;
 	tmp = ft_substr(line, 1, stop - 1);
+	return (tmp);
+}
+
+char	*expand_quote(char *line, int *index, t_list *env)
+{
+	char	*tmp;
+
+	tmp = NULL;
+	if (*line == '"')
+		tmp = expand_vars_in_double_quote(line, index, env);
+	else if (*line == '\'')
+	{
+		tmp = ft_substr(line, 0, skip_quotes(line));
+		*index += skip_quotes(line);
+	}
 	return (tmp);
 }

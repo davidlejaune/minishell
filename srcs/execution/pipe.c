@@ -6,20 +6,11 @@
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/14 11:51:18 by dly               #+#    #+#             */
-/*   Updated: 2023/02/25 20:15:2 by dly              ###   ########.fr       */
+/*   Updated: 2023/02/27 22:41:30 by mirsella         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../../includes/minishell.h"
-
-int	double_dup2(int in, int out)
-{
-	if (dup2(in, STDIN_FILENO) == -1)
-		return (-1);
-	if (dup2(out, STDOUT_FILENO) == -1)
-		return (-1);
-	return (0);
-}
 
 int	open_pipe(t_proc *proc)
 {
@@ -38,60 +29,82 @@ int	open_pipe(t_proc *proc)
 	return (0);
 }
 
-void	close_pipe(t_proc *proc)
+void	close_pipe1(t_proc *proc)
 {
 	while (proc)
 	{
 		if (proc->type == SUBSHELL)
-			close_pipe(proc->procs);
+			close_pipe1(proc->procs);
 		if (proc->next_pipeline == PIPE)
 		{
-			if (proc->pipes[0] > 2)
-				close(proc->pipes[0]);
-			if (proc->pipes[0] > 2)
-				close(proc->pipes[1]);
+			close(proc->pipes[0]);
+			close(proc->pipes[1]);
 		}
 		proc = proc->next;
 	}
 }
 
-void	assign_pipe_cmd(t_proc *proc)
+void	close_pipe(t_proc *proc)
 {
-	if (proc->next->type == SUBSHELL)
+	while (proc)
 	{
-		if (proc->next->procs->fd_in == STDIN_FILENO)
+		if (proc->next_pipeline == PIPE)
 		{
-			proc->next->procs->fd_in = proc->pipes[0];
-			proc->next->fd_out = proc->pipes[1];
+			close(proc->pipes[0]);
+			close(proc->pipes[1]);
 		}
-	}
-	if (proc->fd_out == STDOUT_FILENO)
-	{
-		proc->fd_out = proc->pipes[1];
-		if (proc->next && proc->next->fd_in == STDIN_FILENO)
-			proc->next->fd_in = proc->pipes[0];
+		if (proc->from_pipe)
+		{
+			close(proc->from_pipe[0]);
+			close(proc->from_pipe[1]);
+		}
+		proc = proc->next;
 	}
 }
 
-void	assign_pipe_subshell(t_proc *proc)
+void	assign_pipe_2(t_proc *proc)
 {
+	t_proc	*tmp;
+
+	if (proc->next->type == COMMAND && proc->next->fd_in == STDIN_FILENO)
+	{
+		proc->next->from_pipe = proc->pipes;
+		proc->next->fd_in = proc->pipes[0];
+	}
+	if (proc->next->type == SUBSHELL)
+	{
+		tmp = proc->next->procs;
+		if (tmp->procs)
+		{
+			while (tmp->procs)
+				tmp = tmp->procs;
+		}
+		if (tmp->fd_in == STDIN_FILENO)
+			tmp->fd_in = proc->pipes[0];
+		tmp->from_pipe = proc->pipes;
+	}
+}
+
+void	assign_pipe(t_proc *proc)
+{
+	t_proc	*tmp;
+
 	if (proc->next_pipeline == PIPE)
 	{
-		if (proc->next->procs)
+		if (proc->type == COMMAND && proc->fd_out == STDOUT_FILENO)
 		{
-			proc->next->procs->fd_in = proc->pipes[0];
-			proc->next->fd_out = proc->pipes[1];
+			proc->fd_out = proc->pipes[1];
 		}
-		if (proc->next->fd_in == STDIN_FILENO)
-			proc->next->fd_in = proc->pipes[0];
-		while (proc->procs)
+		if (proc->type == SUBSHELL)
 		{
-			if (proc->procs->next_pipeline != PIPE)
+			tmp = proc->procs;
+			while (tmp)
 			{
-				if (proc->procs->fd_out == STDOUT_FILENO)
-					proc->procs->fd_out = proc->pipes[1];
+				if (tmp->next_pipeline != PIPE && tmp->fd_out == STDOUT_FILENO)
+						tmp->fd_out = proc->pipes[1];
+				tmp = tmp->next;
 			}
-			proc->procs = proc->procs->next;
 		}
+		assign_pipe_2(proc);
 	}
 }

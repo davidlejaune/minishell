@@ -6,7 +6,7 @@
 /*   By: mirsella <mirsella@protonmail.com>         +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/10 15:38:38 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/24 19:53:40 by mirsella         ###   ########.fr       */
+/*   Updated: 2023/02/28 16:04:58 by lgillard         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ char	*get_redirect_word_expand(char *line, int *ret, t_list *env)
 	char	*tmp;
 
 	if (*(line + ft_skip_spaces(line)) == 0)
-		return (*ret = 1, print_syntax_error("near empty redirect", 0), NULL);
+		return (*ret = 2, print_syntax_error("near empty redirect", 0), NULL);
 	stop = 0;
 	while (line[stop] && !ismeta(line[stop]) && !ft_isspace(line[stop]))
 	{
@@ -51,20 +51,20 @@ int	remove_redirections(char *line)
 {
 	int	i;
 
-	line += ft_skip_spaces(line);
-	while (*line == '>' || *line == '<')
-		*line++ = ' ';
-	line += ft_skip_spaces(line);
-	while (*line && !ismeta(*line) && !ft_isspace(*line))
+	i = 0;
+	i += ft_skip_spaces(line + i);
+	while (line[i] == '>' || line[i] == '<')
+		line[i++] = ' ';
+	i += ft_skip_spaces(line + i);
+	while (line[i] && !ismeta(line[i]) && !ft_isspace(line[i]))
 	{
-		if (*line == '\'' || *line == '"')
-			i = skip_quotes(line);
+		if (line[i] == '\'' || line[i] == '"')
+			i += skip_quotes(line + i);
 		else if (*line == '(')
-			i = skip_parenthesis(line);
+			i += skip_parenthesis(line + i);
 		else
-			i = 1;
+			i++;
 		ft_memset(line, ' ', i);
-		line += i;
 	}
 	return (i);
 }

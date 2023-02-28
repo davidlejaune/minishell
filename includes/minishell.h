@@ -6,7 +6,7 @@
 /*   By: dly <dly@student.42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/03 08:57:17 by mirsella          #+#    #+#             */
-/*   Updated: 2023/02/25 19:33:39 by dly              ###   ########.fr       */
+/*   Updated: 2023/02/28 15:05:12 by lgillard         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,6 +61,7 @@ typedef struct s_proc
 	int				fd_in;
 	int				fd_out;
 	int				pipes[2];
+	int				*from_pipe;
 	pid_t			pid;
 	int				exit_code;
 	struct s_proc	*next;
@@ -78,7 +79,8 @@ int				skip_pipeline(t_next_pipeline pipeline_type);
 t_next_pipeline	get_pipeline_type(char *line);
 
 // signals.c
-void			call_sigaction(void);
+void			sigint_process(int signo);
+void			sigint_handler(int signo);
 
 // close.c
 void			free_shell_data(t_list *env);
@@ -95,6 +97,7 @@ int				create_and_push_proc(
 					t_proc **first, t_proc **last_proc, t_proc **proc);
 t_proc			*new_proc(void);
 void			procs_free(t_proc **proc);
+int				get_status_of_last_proc(t_proc *proc);
 
 // parsing/skipping.c
 int				skip_quotes(char *line);
@@ -128,9 +131,10 @@ char			*expand_vars_in_double_quote(
 char			*remove_quotes(char *line);
 char			*expand_everything(char *str, t_list *env);
 
-// parsing/expanders.c
+// parsing/expander.c
 char			*expand_var(t_list *env, char *str, int *index);
 char			*get_in_quote(char *str, int *index);
+char			*expand_quote(char *line, int *index, t_list *env);
 
 // parsing/expand_wildcard.c
 int				is_wildcard(char *line);
@@ -149,10 +153,6 @@ int				parse_line_to_proc(char *line, t_proc *proc, t_list *env);
 
 // parsing/set_full_path.c
 int				set_full_path(t_list *env, char *cmd, char **full_path);
-
-// execution/execute.c
-int				print_procs(t_proc *procs, t_list *env, int layer);
-int				execute(t_proc *procs, t_list *env);
 
 // builtin/builtin.c
 int				isbuiltin(char *cmd);
@@ -180,21 +180,28 @@ int				builtin_env(t_proc *proc, t_list *env);
 int				builtin_pwd(t_proc *proc);
 
 // parsing/stat.c
-int				is_file_executable(char *path);
+int				is_file_executable(char *path, int print_error);
 int				is_file_readable(char *path);
 int				is_file_writable(char *path);
+
+// execution/execute.c
+void			free_and_exit_child(t_proc *proc, t_list *env, int exit_code);
+void			wait_loop(t_proc *proc);
+void			child(t_proc *tmp, t_proc *proc, t_list *env);
+int				execute(t_proc *procs, t_list *env);
 
 // execute/pipe.c
 int				double_dup2(int in, int out);
 int				open_pipe(t_proc *proc);
+void			close_pipe1(t_proc *proc);
 void			close_pipe(t_proc *proc);
-void			assign_pipe_cmd(t_proc *proc);
-void			assign_pipe_subshell(t_proc *proc);
+void			assign_pipe(t_proc *proc);
 
 // execute/processus.c
 int				process(t_proc *proc, t_list *env);
 
 // execute/operator.c
 int				recursive_and_or(t_proc *proc, t_list *env, int need_open);
+int				double_dup2(int in, int out);
 
 #endif
